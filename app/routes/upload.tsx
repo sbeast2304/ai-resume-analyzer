@@ -3,7 +3,6 @@ import Navbar from "~/components/Navbar";
 import FileUploader from "~/components/FileUploader";
 import { usePuterStore } from "~/lib/puter";
 import { useNavigate } from "react-router";
-import { convertPdfToImage } from "~/lib/pdf2img";
 import { generateUUID } from "~/lib/utils";
 import { prepareInstructions } from "../../constants";
 
@@ -22,6 +21,7 @@ const Upload = () => {
         try {
             setIsProcessing(true);
 
+            // 1. Original PDF File Upload
             setStatusText('Uploading the file...');
             const uploadedFile = await fs.upload([file]);
             if (!uploadedFile) {
@@ -29,38 +29,23 @@ const Upload = () => {
                 return setStatusText('Error: Failed to upload file');
             }
 
-            setStatusText('Converting to image...');
-            const imageFile = await convertPdfToImage(file);
-
-            let finalImageFile = imageFile?.file;
-            if (!finalImageFile) {
-                finalImageFile = file;
-            }
-
-            setStatusText('Uploading the image...');
-            const uploadedImage = await fs.upload([finalImageFile]);
-            if (!uploadedImage) {
-                setIsProcessing(false);
-                return setStatusText('Error: Failed to upload image');
-            }
-
+            // 2. Data Object Preparation (Direct Accessible Cloud PDF URL Format)
             setStatusText('Preparing data...');
             const uuid = generateUUID();
             const data = {
                 id: uuid,
                 resumePath: uploadedFile.path,
-                imagePath: uploadedImage.path,
+                imagePath: `https://api.puter.com/v1/fs/read${uploadedFile.path}`, // 🔥 Direct Readable Link for PDF Preview
                 companyName, jobTitle, jobDescription,
                 feedback: '',
             }
             await kv.set(`resume:${uuid}`, JSON.stringify(data));
 
+            // 3. AI Analysis Using Puter SDK Direct Multi-Modal Upload Link
             setStatusText('Analyzing...');
-
-            // 👇 TS2339 hatane ke liye Puter official input pattern: (prompt, explicit file representation)
             const feedback = await ai.chat(
                 prepareInstructions({ jobTitle, jobDescription }),
-                uploadedImage as any
+                uploadedFile as any
             );
 
             if (!feedback) {
@@ -76,24 +61,18 @@ const Upload = () => {
                 feedbackText = safeFeedback.text || safeFeedback.message?.content || '';
             }
 
-            if (!feedbackText) {
-                setIsProcessing(false);
-                return setStatusText('Error: Empty response from AI');
-            }
-
             try {
                 data.feedback = JSON.parse(feedbackText);
             } catch (e) {
                 data.feedback = feedbackText as any;
             }
 
+            // Final Save
             await kv.set(`resume:${uuid}`, JSON.stringify(data));
 
             setStatusText('Analysis complete, redirecting...');
-            console.log(data);
-
             setIsProcessing(false);
-            navigate(`/result/${uuid}`);
+            navigate(`/resume/${uuid}`);
         } catch (error) {
             console.error("Fatal Crash Details:", error);
             setIsProcessing(false);
@@ -119,7 +98,6 @@ const Upload = () => {
     return (
         <main className="bg-[url('/images/bg-main.svg')] bg-cover">
             <Navbar />
-
             <section className="main-section">
                 <div className="page-heading py-16">
                     <h1>Smart feedback for your dream job</h1>
@@ -152,12 +130,10 @@ const Upload = () => {
                                 <label htmlFor="job-description">Job Description</label>
                                 <textarea rows={5} name="job-description" placeholder="Job Description" id="job-description" />
                             </div>
-
                             <div className="form-div">
                                 <label htmlFor="uploader">Upload Resume</label>
                                 <FileUploader onFileSelect={handleFileSelect} />
                             </div>
-
                             <button className="primary-button" type="submit">
                                 Analyze Resume
                             </button>
