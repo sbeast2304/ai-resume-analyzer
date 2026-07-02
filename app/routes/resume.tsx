@@ -22,7 +22,7 @@ const Resume = () => {
     const { auth, isLoading, fs, kv } = usePuterStore();
     const { id } = useParams();
     const [resumeUrl, setResumeUrl] = useState('');
-    const [feedback, setFeedback] = useState<Feedback | null>(null);
+    const [feedback, setFeedback] = useState<any>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -30,6 +30,7 @@ const Resume = () => {
     }, [isLoading])
 
     useEffect(() => {
+
         const loadResume = async () => {
             const resume = await kv.get(`resume:${id}`);
 
