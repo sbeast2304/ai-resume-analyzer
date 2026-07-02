@@ -5,4 +5,6 @@ export default [
     route("/auth", "routes/auth.tsx"), // <-- 'routes' ki jagah 'route' use hoga aur .tsx extension aayega
     route('/upload', 'routes/upload.tsx'),
     route('/resume/:id', 'routes/resume.tsx'),
+    route('/wipe', 'routes/wipe.tsx'),
+
 ] satisfies RouteConfig;
