@@ -30,7 +30,6 @@ const Resume = () => {
     }, [isLoading])
 
     useEffect(() => {
-
         const loadResume = async () => {
             const resume = await kv.get(`resume:${id}`);
 
@@ -38,16 +37,13 @@ const Resume = () => {
 
             const data = JSON.parse(resume);
 
-            // 👇 Pure document stream read karke direct secure local blob generate kar rahe hain
             const resumeBlob = await fs.read(data.resumePath);
             if(!resumeBlob) return;
 
             const pdfBlob = new Blob([resumeBlob], { type: 'application/pdf' });
             const localBlobUrl = URL.createObjectURL(pdfBlob);
 
-            // Local blob preview window ke liye set kiya
             setResumeUrl(localBlobUrl);
-
             setFeedback(data.feedback);
             console.log({ resumeUrl: localBlobUrl, feedback: data.feedback });
         }
@@ -58,27 +54,29 @@ const Resume = () => {
     }, [id, isLoading, auth.isAuthenticated]);
 
     return (
-        <main className="!pt-0">
-            <nav className="resume-nav">
-                <Link to="/" className="back-button">
-                    <img src="/icons/back.svg" alt="logo" className="w-2.5 h-2.5" />
+        <main className="!pt-0 min-h-screen bg-white">
+            <nav className="resume-nav w-full">
+                <Link to="/" className="back-button w-fit block">
+                    <img src="/icons/back.svg" alt="logo" className="w-2.5 h-2.5 inline-block mr-2" />
                     <span className="text-gray-800 text-sm font-semibold">Back to Homepage</span>
                 </Link>
             </nav>
-            <div className="flex flex-row w-full max-lg:flex-col-reverse">
-                <section className="feedback-section bg-[url('/images/bg-small.svg')] bg-cover h-[100vh] sticky top-0 items-center justify-center">
-                    {resumeUrl && (
-                        /* 👇 Apka exact style fallback jisme width strictly controlled hai taaki lambi patti na bane */
-                        <div className="animate-in fade-in duration-1000 gradient-border max-sm:m-0 h-[90%] w-full max-w-[480px] overflow-hidden rounded-2xl shadow-lg relative group">
 
-                            {/* Embedded clean document preview viewport format without raw browser headers */}
+            {/* 👇 Zoom-Proof Split Layout (Flex row hata kar direct responsive Grid laga diya) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 w-full min-h-[calc(100vh-60px)] items-start">
+
+                {/* LEFT SIDE PANEL: Auto adjusting resume canvas */}
+                <section className="bg-[url('/images/bg-small.svg')] bg-cover w-full h-full min-h-[500px] lg:h-[calc(100vh-60px)] lg:sticky lg:top-[60px] flex items-center justify-center p-4">
+                    {resumeUrl && (
+                        /* 👇 Aspect Ratio matching box: Ye har zoom level aur resolution par dynamic center hi rahega */
+                        <div className="animate-in fade-in duration-1000 gradient-border h-full max-h-[750px] w-full max-w-[460px] aspect-[1/1.41] overflow-hidden rounded-2xl shadow-xl relative bg-white flex items-center justify-center transition-all duration-300">
+
                             <iframe
-                                src={`${resumeUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                                className="w-full h-full border-0 rounded-2xl pointer-events-none"
+                                src={`${resumeUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                                className="w-full h-full border-0 rounded-2xl pointer-events-none block object-contain"
                                 title="resume"
                             />
 
-                            {/* 👇 Invisible Overlay: Is par click karte hi original file safe zoom aur download views ke sath open hogi */}
                             <a
                                 href={resumeUrl}
                                 target="_blank"
@@ -89,18 +87,23 @@ const Resume = () => {
                         </div>
                     )}
                 </section>
-                <section className="feedback-section">
-                    <h2 className="text-4xl !text-black font-bold">Resume Review</h2>
+
+                {/* RIGHT SIDE PANEL: Content Cards Scrolling Node */}
+                <section className="feedback-section w-full p-6 lg:p-12 h-full overflow-y-auto">
+                    <h2 className="text-4xl !text-black font-bold mb-6">Resume Review</h2>
                     {feedback ? (
-                        <div className="flex flex-col gap-8 animate-in fade-in duration-1000">
+                        <div className="flex flex-col gap-8 animate-in fade-in duration-1000 w-full">
                             <Summary feedback={feedback} />
                             <ATS score={feedback.ATS?.score || 0} suggestions={feedback.ATS?.tips || []} />
                             <Details feedback={feedback} />
                         </div>
                     ) : (
-                        <img src="/images/resume-scan-2.gif" className="w-full" alt="Scanning..." />
+                        <div className="w-full flex justify-center items-center py-12">
+                            <img src="/images/resume-scan-2.gif" className="w-full max-w-sm" alt="Scanning..." />
+                        </div>
                     )}
                 </section>
+
             </div>
         </main>
     )
